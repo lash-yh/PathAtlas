@@ -71,7 +71,7 @@ Este proyecto ha sido desarrollado con los siguientes requisitos en mente:
     ```
 
 3.  **Ejecutar el proyecto:**
-    Dependiendo de cómo esté estructurado el punto de entrada principal (actualmente en construcción en `main.py`), puedes ejecutarlo directamente usando `uv`:
+    Ejecuta una vista previa de los renombrados usando `uv`:
     ```bash
     uv run main.py
     ```
@@ -97,3 +97,21 @@ archivos y después las carpetas, de mayor a menor profundidad. La vista previa
 es el modo predeterminado; `uv run main.py --run` aplica los cambios.
 
 Ejecuta toda la suite con `uv run pytest`.
+
+### Trabajar sobre una ruta específica
+
+El subcomando `path` permite indicar un directorio sin depender de la detección
+del SSD. Acepta rutas absolutas, relativas y `~`; la ruta debe existir y ser un
+directorio. Las exclusiones de `config.json` también se aplican a este modo.
+
+```bash
+# Vista previa
+uv run main.py path "/ruta/Mis Archivos"
+
+# Aplicar los renombrados
+uv run main.py path "/ruta/Mis Archivos" --run
+```
+
+Se procesan los archivos y subdirectorios dentro de la ruta indicada; el
+directorio raíz conserva su nombre. Sin subcomando, `uv run main.py` sigue
+buscando el SSD configurado.
