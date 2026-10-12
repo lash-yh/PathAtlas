@@ -1,10 +1,12 @@
+"""Carga de la configuración JSON de la aplicación."""
+
 import json
 import logging
 from pathlib import Path
 
 _CONFIG_CACHE: dict[str, dict] = {}
 
-def get_cached_config_value(config_path: Path, key: str)-> str | None:
+def get_cached_config_value(config_path: Path, key: str)-> str | list[str] | None:
     path_str: str = str(config_path)
 
     if path_str not in _CONFIG_CACHE:
@@ -24,39 +26,3 @@ def get_cached_config_value(config_path: Path, key: str)-> str | None:
         _CONFIG_CACHE[path_str] = {}
 
     return _CONFIG_CACHE[path_str].get(key)
-
-
-def build_directory_tree(base_path: Path, ignore_list: list[str]) -> dict[str, dict | None]:
-    tree: dict[str, dict | None] = {}
-    try:
-        for item in base_path.iterdir():
-            if item.name in ignore_list:
-                continue
-
-            if item.is_dir():
-                tree[item.name] = build_directory_tree(item, ignore_list)
-
-            elif item.is_file():
-                tree[item.name] = None
-
-    except PermissionError:
-        logging.error("Permission denied — skipping directory tree at: %s", base_path)
-
-    return tree
-
-
-def save_structure_directories(config_path: Path | None, new_structure: dict) -> None:
-    structure_data: dict = {}
-
-    if config_path and config_path.exists():
-        with open(config_path, 'r', encoding='utf-8') as f:
-            try:
-                structure_data = json.load(f)
-            except json.JSONDecodeError:
-                return
-
-    structure_data.update(new_structure)
-
-    if config_path:
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(structure_data, f, indent=4, ensure_ascii=False)

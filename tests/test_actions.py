@@ -1,40 +1,14 @@
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 from core.actions import (
-    find_ssd_mount_point,
     _unique_path,
     resolve_name_path,
     organize_for_depth_and_alphabetical,
-    get_name_files,
-    get_name_directories
+    rename_files_and_directories,
 )
 
-def test_find_ssd_mount_point(mocker: MockerFixture) -> None:
-    # Usar mocking para psutil.disk_partitions
-    mock_partitions = mocker.patch("psutil.disk_partitions")
-
-    # Configurar mock data
-    part1 = MagicMock()
-    part1.mountpoint = "/mnt/HDD"
-    part2 = MagicMock()
-    part2.mountpoint = "/mnt/MyData_SSD"
-
-    mock_partitions.return_value = [part1, part2]
-
-    # Validar que identifique correctamente el punto de montaje basado en el sufijo
-    result = find_ssd_mount_point("SSD")
-    assert result == Path("/mnt/MyData_SSD")
-
-    # Validar caso de error sin etiqueta
-    with pytest.raises(ValueError, match="label_ssd is empty"):
-        find_ssd_mount_point("")
-
-    # Validar que retorna None cuando no encuentra la etiqueta
-    result_not_found = find_ssd_mount_point("NVME")
-    assert result_not_found is None
 
 def test_unique_path_no_collision(mocker: MockerFixture) -> None:
     # Si la ruta no existe, debe retornar la original
@@ -107,69 +81,58 @@ def test_organize_for_depth_and_alphabetical() -> None:
 
     assert result == expected
 
-def test_get_name_files(mocker: MockerFixture) -> None:
-    source_path = MagicMock(spec=Path)
-    config_path = Path("/mock/config.json")
 
-    # Configurar mock de iterdir para retornar una estructura mixta
-    file1 = MagicMock(spec=Path)
-    file1.is_dir.return_value = False
-    file1.is_file.return_value = True
 
-    dir1 = MagicMock(spec=Path)
-    dir1.is_dir.return_value = True
-    dir1.is_file.return_value = False
-    dir1.name = ".git"
+def test_rename_dry_run_keeps_original_file(tmp_path: Path) -> None:
+    original = tmp_path / "Mi Archivo.TXT"
+    original.write_text("contenido")
 
-    dir2 = MagicMock(spec=Path)
-    dir2.is_dir.return_value = True
-    dir2.is_file.return_value = False
-    dir2.name = "src"
+    rename_files_and_directories([original], is_dry_run=True)
 
-    file2 = MagicMock(spec=Path)
-    file2.is_dir.return_value = False
-    file2.is_file.return_value = True
+    assert original.read_text() == "contenido"
+    assert not (tmp_path / "mi-archivo.txt").exists()
 
-    # iterdir for dir2
-    dir2.iterdir.return_value = [file2]
 
-    # iterdir for source_path
-    source_path.iterdir.return_value = [file1, dir1, dir2]
+def test_rename_collision_preserves_existing_file(tmp_path: Path) -> None:
+    original = tmp_path / "Mi Archivo.TXT"
+    original.write_text("nuevo")
+    existing = tmp_path / "mi-archivo.txt"
+    existing.write_text("anterior")
 
-    # Mocking config para ignorar ".git"
-    mocker.patch("core.actions._resolve_config", return_value=[".git"])
+    rename_files_and_directories([original], is_dry_run=False)
 
-    result = list(get_name_files(source_path, config_path, "ignore"))
+    assert existing.read_text() == "anterior"
+    assert (tmp_path / "mi-archivo(1).txt").read_text() == "nuevo"
+    assert not original.exists()
 
-    assert file1 in result
-    assert file2 in result
-    assert len(result) == 2
 
-def test_get_name_directories(mocker: MockerFixture) -> None:
-    source_path = MagicMock(spec=Path)
-    config_path = Path("/mock/config.json")
+def test_resolve_name_path_same_file_skips_collision(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    original = tmp_path / "Mi Archivo.TXT"
+    original.write_text("contenido")
+    target = tmp_path / "mi-archivo.txt"
+    mocker.patch.object(Path, "exists", return_value=True)
+    mocker.patch.object(Path, "samefile", return_value=True)
 
-    dir1 = MagicMock(spec=Path)
-    dir1.is_dir.return_value = True
-    dir1.name = "node_modules"
+    assert resolve_name_path(original) == target
 
-    dir2 = MagicMock(spec=Path)
-    dir2.is_dir.return_value = True
-    dir2.name = "src"
 
-    dir3 = MagicMock(spec=Path)
-    dir3.is_dir.return_value = True
-    dir3.name = "components"
-    dir3.iterdir.return_value = []
+def test_rename_files_then_deepest_directories(tmp_path: Path) -> None:
+    from core.traversal import get_name_directories, get_name_files
 
-    dir2.iterdir.return_value = [dir3]
-    source_path.iterdir.return_value = [dir1, dir2]
+    child = tmp_path / "01. Mi Carpeta" / "02. Sub Carpeta"
+    child.mkdir(parents=True)
+    (child / "Mi Archivo.TXT").write_text("contenido")
+    files = organize_for_depth_and_alphabetical(
+        get_name_files(tmp_path, None, "ignore", [])
+    )
+    directories = organize_for_depth_and_alphabetical(
+        get_name_directories(tmp_path, None, "ignore", [])
+    )
 
-    mocker.patch("core.actions._resolve_config", return_value=["node_modules"])
+    rename_files_and_directories(files, is_dry_run=False)
+    rename_files_and_directories(directories, is_dry_run=False)
 
-    result = list(get_name_directories(source_path, config_path, "ignore"))
-
-    assert dir2 in result
-    assert dir3 in result
-    assert dir1 not in result
-    assert len(result) == 2
+    result = tmp_path / "mi-carpeta" / "sub-carpeta" / "mi-archivo.txt"
+    assert result.read_text() == "contenido"

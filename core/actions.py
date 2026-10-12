@@ -1,19 +1,12 @@
-from pathlib import Path
-import psutil
+"""Resolución de colisiones, orden y ejecución segura de renombrados."""
+
 import logging
+from collections.abc import Iterable
 from itertools import count
-from core.config_loader import get_cached_config_value
-from utils.text_utils import (clean_file_name,
-                            clean_directory_name)
+from pathlib import Path
 
-def _resolve_config(config_path: Path, key_config: str,
-                    config_value: list | None) -> list | None:
+from utils.text_utils import clean_directory_name, clean_file_name
 
-    if config_value is not None:
-        return config_value
-    if config_path:
-        return get_cached_config_value(config_path, key_config) or []
-    return []
 
 def _unique_path(base_path: Path)-> Path | None:
     """Genera una ruta única añadiendo un sufijo numérico para evitar colisiones.
@@ -31,19 +24,6 @@ def _unique_path(base_path: Path)-> Path | None:
         candidate: Path = base_path.parent / f"{stem}({n}){suffix}"
         if not candidate.exists():
             return candidate
-    return None
-
-
-def find_ssd_mount_point(label_ssd: str | None)-> Path | None:
-    if not label_ssd:
-        raise ValueError("label_ssd is empty")
-
-    for part in psutil.disk_partitions():
-        mount_point: str = part.mountpoint.rstrip('/')
-        if mount_point.endswith(label_ssd):
-            logging.info("SSD found — device: %s | mount point: %s | filesystem: %s",
-                        part.device, part.mountpoint, part.fstype)
-            return Path(part.mountpoint)
     return None
 
 
@@ -87,51 +67,11 @@ def resolve_name_path(base_path: Path) -> Path | None:
     return _unique_path(final_name)
 
 
-def organize_for_depth_and_alphabetical(list_items)-> list:
+def organize_for_depth_and_alphabetical(list_items: Iterable[Path]) -> list[Path]:
     return sorted(list(list_items), key=lambda part: (-len(part.parts), part))
 
 
-def get_name_files(source_path: Path, config_path: Path,
-                key: str, config_value: list | None = None):
-
-    ignore_dir: list[str] = _resolve_config(config_path, key, config_value)
-
-    try:
-        for item in source_path.iterdir():
-
-            if item.is_dir():
-                if item.name in ignore_dir:
-                    continue
-
-                yield from get_name_files(item, config_path,
-                                    key, ignore_dir)
-
-            elif item.is_file():
-                yield item
-    except PermissionError:
-        logging.error("Permission denied — cannot read directory contents: %s", source_path)
-
-
-def get_name_directories(source_path: Path, config_path: Path,
-                        key: str, config_value: list | None = None):
-
-    ignore_dir: list[str] = _resolve_config(config_path,
-                                key, config_value)
-    try:
-        for item in source_path.iterdir():
-
-            if item.is_dir():
-                if item.name in ignore_dir:
-                    continue
-
-                yield item
-
-                yield from get_name_directories(item, config_path,
-                                            key, ignore_dir)
-    except PermissionError:
-        logging.error("Permission denied — cannot read directory contents: %s", source_path)
-
-def rename_files_and_directories(list_items: list, is_dry_run: bool) -> None:
+def rename_files_and_directories(list_items: Iterable[Path], is_dry_run: bool) -> None:
     for item in list_items:
         try:
             new_path_file: Path | None = resolve_name_path(item)

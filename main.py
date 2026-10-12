@@ -1,13 +1,13 @@
 from pathlib import Path
 import argparse
 import logging
-from core.actions import (find_ssd_mount_point,
-                        get_name_directories,
-                        get_name_files,
-                        organize_for_depth_and_alphabetical,
-                        rename_files_and_directories)
-# from core.scanner import scanner_structure_directories
+from core.actions import (
+    organize_for_depth_and_alphabetical,
+    rename_files_and_directories,
+)
 from core.config_loader import get_cached_config_value
+from core.mounts import find_ssd_mount_point
+from core.traversal import get_name_directories, get_name_files
 
 
 def main():

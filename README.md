@@ -11,7 +11,7 @@ Este proyecto es una herramienta para el escaneo, renombrado seguro de archivos 
     *   Escanea de forma recursiva un directorio y genera una representación en árbol (diccionario) de toda su estructura.
     *   Soporte para listas de exclusión (ignorar ciertas carpetas) cargadas desde un archivo de configuración JSON.
     *   Cacheo de configuraciones (`config_loader.py`) para optimizar múltiples accesos de lectura.
-    *   Guardado automático de la estructura escaneada en un archivo de configuración (`save_structure_to_config`).
+    *   Guardado automático de la estructura escaneada en un archivo de configuración (`save_structure_directories`).
 
 ### Configuración Avanzada
 
@@ -39,7 +39,7 @@ El sistema de escaneo se puede controlar a través del archivo `config.json`. A 
 
 El proyecto interactúa fuertemente con el sistema de archivos y hardware mediante la librería externa **psutil**.
 
-*   **`find_ssd_mount_point` (`core/actions.py`)**: Utiliza `psutil.disk_partitions()` para realizar una enumeración eficiente de las particiones del sistema.
+*   **`find_ssd_mount_point` (`core/mounts.py`)**: Utiliza `psutil.disk_partitions()` para realizar una enumeración eficiente de las particiones del sistema.
     *   **Lógica y Filtrado**: Itera sobre todas las particiones conectadas, y realiza una limpieza en las rutas (`rstrip('/')`). Finalmente, compara cada punto de montaje contra la etiqueta (`mount_point_label`) que configuramos, devolviendo la partición que finaliza con esta etiqueta.
     *   **Retorno Tipado**: Aunque `psutil` retorna resultados como cadenas de texto convencionales (strings), esta función encapsula inmediatamente el valor dentro de un objeto `Path` (`pathlib`), asegurando la consistencia y mantenibilidad del uso de rutas en todo el proyecto.
 
@@ -75,3 +75,25 @@ Este proyecto ha sido desarrollado con los siguientes requisitos en mente:
     ```bash
     uv run main.py
     ```
+
+
+## Organización por responsabilidad
+
+| Módulo | Responsabilidad |
+| :--- | :--- |
+| `main.py` | Argumentos de la CLI, logging y coordinación del renombrado. |
+| `core/config_loader.py` | Lectura de la configuración JSON. |
+| `core/mounts.py` | Detección del punto de montaje configurado. |
+| `core/traversal.py` | Recorrido recursivo, exclusiones, selección de nombres y construcción del árbol. |
+| `core/actions.py` | Orden de renombrado, resolución de colisiones y ejecución o vista previa. |
+| `core/scanner.py` | Coordinación del escaneo de estructuras. |
+| `core/structure_storage.py` | Lectura y guardado de estructuras en JSON. |
+| `utils/text_utils.py` | Normalización de nombres. |
+| `utils/file_metadata.py` | Consulta de tamaño, cantidad de archivos y última modificación. |
+| `utils/formatting.py` | Formato de tamaños y fechas. |
+
+Las pruebas se agrupan por módulo en `tests/`. El renombrado procesa primero los
+archivos y después las carpetas, de mayor a menor profundidad. La vista previa
+es el modo predeterminado; `uv run main.py --run` aplica los cambios.
+
+Ejecuta toda la suite con `uv run pytest`.
