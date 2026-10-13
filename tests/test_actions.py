@@ -125,10 +125,10 @@ def test_rename_files_then_deepest_directories(tmp_path: Path) -> None:
     child.mkdir(parents=True)
     (child / "Mi Archivo.TXT").write_text("contenido")
     files = organize_for_depth_and_alphabetical(
-        get_name_files(tmp_path, None, "ignore", [])
+        get_name_files(tmp_path, [])
     )
     directories = organize_for_depth_and_alphabetical(
-        get_name_directories(tmp_path, None, "ignore", [])
+        get_name_directories(tmp_path, [])
     )
 
     rename_files_and_directories(files, is_dry_run=False)

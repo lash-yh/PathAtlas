@@ -5,7 +5,7 @@ from core.actions import (
     organize_for_depth_and_alphabetical,
     rename_files_and_directories,
 )
-from core.config_loader import get_cached_config_value
+from core.config_loader import load_config
 from core.mounts import find_ssd_mount_point
 from core.traversal import get_name_directories, get_name_files
 
@@ -38,27 +38,36 @@ def main() -> None:
                         datefmt="%H:%M:%S"
                         )
 
-    args = _build_parser().parse_args()
+    parser = _build_parser()
+    args = parser.parse_args()
 
     dry_run = not args.run
 
     config_path = Path.cwd() / "config.json"
-    ignore_list = get_cached_config_value(config_path, "ignore") or []
+    try:
+        config = load_config(config_path)
+    except (OSError, ValueError) as error:
+        logging.error("Cannot load config from %s: %s", config_path, error)
+        parser.exit(2)
+    ignore_list = frozenset(config["ignore"])
 
     if args.command == 'path':
         source_path = args.directory
     else:
-        mount_label = get_cached_config_value(config_path, "mount_point_label")
+        mount_label = config["mount_point_label"]
+        if not mount_label:
+            logging.error("Config 'mount_point_label' is required for drive detection")
+            parser.exit(2)
         source_path = find_ssd_mount_point(mount_label)
         if not source_path:
             logging.error("Drive with label '%s' not found in disk partitions", mount_label)
             return
 
     files = organize_for_depth_and_alphabetical(
-        get_name_files(source_path, config_path, "ignore", ignore_list))
+        get_name_files(source_path, ignore_list))
 
     directories = organize_for_depth_and_alphabetical(
-        get_name_directories(source_path, config_path, "ignore", ignore_list))
+        get_name_directories(source_path, ignore_list))
 
     rename_files_and_directories(files, dry_run)
     rename_files_and_directories(directories, dry_run)

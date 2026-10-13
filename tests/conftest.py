@@ -4,13 +4,6 @@ from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 @pytest.fixture
-def mock_config_json(mocker: MockerFixture) -> None:
-    # Fixture que simula un config.json
-    mock_data = '{"mount_point_label": "SSD", "ignore": [".git", "node_modules"]}'
-    mocker.patch("builtins.open", mocker.mock_open(read_data=mock_data))
-    mocker.patch.object(Path, "exists", return_value=True)
-
-@pytest.fixture
 def mock_directory_structure(mocker: MockerFixture) -> MagicMock:
     # Fixture que simula una estructura de directorios básica
     source_path = MagicMock(spec=Path)

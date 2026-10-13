@@ -10,7 +10,7 @@ Este proyecto es una herramienta para el escaneo, renombrado seguro de archivos 
 *   **Escaneo y Generación de Estructuras (JSON):**
     *   Escanea de forma recursiva un directorio y genera una representación en árbol (diccionario) de toda su estructura.
     *   Soporte para listas de exclusión (ignorar ciertas carpetas) cargadas desde un archivo de configuración JSON.
-    *   Cacheo de configuraciones (`config_loader.py`) para optimizar múltiples accesos de lectura.
+    *   Carga única del JSON (`config_loader.py`) por ejecución y consultas posteriores en memoria, sin caché global.
     *   Guardado automático de la estructura escaneada en un archivo de configuración (`save_structure_directories`).
 
 ### Configuración Avanzada
@@ -82,7 +82,7 @@ Este proyecto ha sido desarrollado con los siguientes requisitos en mente:
 | Módulo | Responsabilidad |
 | :--- | :--- |
 | `main.py` | Argumentos de la CLI, logging y coordinación del renombrado. |
-| `core/config_loader.py` | Lectura de la configuración JSON. |
+| `core/config_loader.py` | Carga única y validación de la configuración JSON. |
 | `core/mounts.py` | Detección del punto de montaje configurado. |
 | `core/traversal.py` | Recorrido recursivo, exclusiones, selección de nombres y construcción del árbol. |
 | `core/actions.py` | Orden de renombrado, resolución de colisiones y ejecución o vista previa. |
@@ -115,3 +115,33 @@ uv run main.py path "/ruta/Mis Archivos" --run
 Se procesan los archivos y subdirectorios dentro de la ruta indicada; el
 directorio raíz conserva su nombre. Sin subcomando, `uv run main.py` sigue
 buscando el SSD configurado.
+
+### Carga de configuración
+
+`main()` carga y valida `config.json` una sola vez mediante `load_config()`.
+Las consultas de `ignore` y `mount_point_label` usan el resultado en memoria;
+los recorridos reciben las exclusiones directamente, sin abrir el JSON.
+Cambiar el archivo durante el proceso no modifica la configuración de ese lote.
+Cada nueva ejecución vuelve a cargar el archivo, sin estado global compartido.
+
+El JSON debe ser un objeto; `ignore` debe ser una lista de strings y
+`mount_point_label`, si se proporciona, un string no vacío o `null`.
+Si falta `ignore`, se usa una lista vacía. La etiqueta solo es obligatoria
+para detectar una unidad; el subcomando `path` no la necesita. Si el archivo
+falta, no puede leerse o es inválido, la CLI registra el error y termina
+con código 2 antes de escanear o renombrar.
+
+Las funciones internas ya no reciben la ruta del JSON:
+
+```python
+from pathlib import Path
+from core.config_loader import load_config
+from core.traversal import get_name_files
+from core.scanner import scanner_structure_directories
+
+config = load_config(Path("config.json"))
+files = list(get_name_files(Path("/ruta"), config["ignore"]))
+scanner_structure_directories(
+    Path("/ruta"), config["ignore"], Path("structure.json")
+)
+```
