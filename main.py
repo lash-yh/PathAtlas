@@ -69,8 +69,7 @@ def main() -> None:
     directories = organize_for_depth_and_alphabetical(
         get_name_directories(source_path, ignore_list))
 
-    rename_files_and_directories(files, dry_run)
-    rename_files_and_directories(directories, dry_run)
+    rename_files_and_directories([*files, *directories], dry_run)
 
 if __name__ == "__main__":
     main()

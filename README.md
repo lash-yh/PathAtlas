@@ -5,8 +5,8 @@ Este proyecto es una herramienta para el escaneo, renombrado seguro de archivos 
 ## Características Principales
 
 *   **Renombrado Seguro y Limpieza:**
-    *   `resolve_name_path`: Renombra archivos y carpetas eliminando caracteres especiales, tildes (usando normalización Unicode) y espacios extra, convirtiéndolos en formatos uniformes (en minúsculas, separados por guiones).
-    *   Gestión automática de colisiones agregando sufijos numéricos (ej: `nombre-(1).txt`) para evitar sobrescribir archivos existentes.
+    *   `resolve_name_path`: Renombra archivos y carpetas eliminando tildes (usando normalización Unicode) y normalizando espacios, conservando signos como `+`, `#`, `!`, `%` y paréntesis, convirtiéndolos en formatos uniformes (en minúsculas, separados por guiones).
+    *   Gestión automática de colisiones agregando sufijos numéricos (ej: `nombre(1).txt`) para evitar sobrescribir archivos existentes.
 *   **Escaneo y Generación de Estructuras (JSON):**
     *   Escanea de forma recursiva un directorio y genera una representación en árbol (diccionario) de toda su estructura.
     *   Soporte para listas de exclusión (ignorar ciertas carpetas) cargadas desde un archivo de configuración JSON.
@@ -115,6 +115,28 @@ uv run main.py path "/ruta/Mis Archivos" --run
 Se procesan los archivos y subdirectorios dentro de la ruta indicada; el
 directorio raíz conserva su nombre. Sin subcomando, `uv run main.py` sigue
 buscando el SSD configurado.
+
+### Normalización y validación de renombrados
+
+La limpieza conserva símbolos y puntuación como `+`, `#`, `!`, `%`, `&`,
+paréntesis y puntos. En Linux también conserva `?` y `*`; en otros sistemas
+los sustituye por separadores. Los caracteres `<>:"/\\|` y los de control
+se sustituyen por separadores. Se mantienen las reglas de minúsculas,
+eliminación de tildes, espacios/guiones bajos a guiones y eliminación de
+prefijos numéricos en directorios.
+
+Ejemplos:
+
+- `Programación en C++ y C#.TXT` → `programacion-en-c++-y-c#.txt`.
+- En Linux, `A!.TXT` → `a!.txt` y `A?.TXT` → `a?.txt`.
+- Un sufijo de colisión como `archivo(1).txt` se conserva en ejecuciones posteriores.
+
+Antes de modificar el lote se validan todos los nombres y se reservan los
+destinos para archivos y directorios. La vista previa y la ejecución usan
+ese mismo procedimiento; con el mismo estado inicial asignan los mismos
+destinos. Los nombres vacíos o inválidos se registran como errores y se
+omiten, continuando con los demás elementos. Los enlaces simbólicos se
+omiten como origen y cuentan como destinos ocupados, incluso si están rotos.
 
 ### Carga de configuración
 

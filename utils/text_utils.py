@@ -1,61 +1,41 @@
 import unicodedata as udd
 import re
+import sys
 from pathlib import Path
 
-def clean_name(name : str) -> str:
-    """Limpia y normaliza un nombre eliminando tildes, caracteres especiales y espacios.
 
-    Aplica un proceso de normalización Unicode NFKD para separar los caracteres base
-    de sus correspondientes acentos diacríticos. Luego, filtra todos los caracteres
-    que pertenecen a la categoría 'Mn' (Nonspacing Mark), eliminando efectivamente
-    las tildes y otros marcadores. Finalmente, utiliza expresiones regulares para
-    remover cualquier carácter no alfanumérico, sustituyendo espacios y guiones bajos
-    por un único guion medio, y convierte el texto a minúsculas.
+_INVALID_CHARACTERS = frozenset('<>:"/\\|?*')
+if sys.platform.startswith('linux'):
+    _INVALID_CHARACTERS -= frozenset('?*')
 
-    Args:
-        name (str): El nombre original a limpiar.
 
-    Returns:
-        str: El nombre limpio, normalizado y formateado con guiones.
-"""
-    clean: str = udd.normalize('NFKD', name)
-    without_accents: str = "".join(c for c in clean if udd.category(c) != 'Mn')
+def clean_name(name: str) -> str:
+    """Normaliza tildes, mayúsculas y espacios conservando signos compatibles.
 
-    clean = re.sub(r'copy-of', '', without_accents, flags=re.IGNORECASE)
+    Conserva símbolos como +, #, !, %, paréntesis y puntos. Los caracteres
+    reservados <>:"/\\| y los de control se sustituyen por espacios.
+    En Linux también se conservan ? y *; en otros sistemas se filtran.
+    """
+    normalized = udd.normalize('NFKD', name)
+    without_accents = "".join(c for c in normalized if udd.category(c) != 'Mn')
+    cleaned = "".join(
+        " " if c in _INVALID_CHARACTERS or udd.category(c).startswith('C') else c
+        for c in without_accents
+    )
+    cleaned = re.sub(r'copy[\s_-]+of[\s_-]*', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'[\s_-]+', '-', cleaned.lower()).strip('-')
+    return cleaned.rstrip('.')
 
-    clean = re.sub(r'[^\w\s]', ' ', clean)
-
-    clean = re.sub(r'\s+', ' ', clean).lower().strip()
-
-    final_name: str = re.sub(r'[\s_-]+', '-', clean)
-    return final_name
 
 def clean_file_name(path_file: Path) -> str:
-    """Genera un nombre de archivo limpio preservando su extensión.
+    """Limpia el nombre y la extensión; devuelve vacío si falta un nombre válido."""
+    name = clean_name(path_file.stem)
+    if not name:
+        return ""
+    return f"{name}{clean_name(path_file.suffix)}"
 
-    Args:
-        path_file (Path): La ruta o archivo a procesar.
-
-    Returns:
-        str: El nuevo nombre de archivo limpio con su extensión original.
-    """
-    name: str = path_file.stem
-    ext: str = path_file.suffix.lower()
-
-    final_name: str = clean_name(name)
-
-    return f"{final_name}{ext}"
 
 def clean_directory_name(path_dir: Path) -> str:
-    """Genera un nombre de directorio limpio eliminando prefijos numéricos.
-
-    Args:
-        path_dir (Path): La ruta del directorio a procesar.
-
-    Returns:
-        str: El nuevo nombre de directorio limpio.
-    """
-    name: str = path_dir.name
-    title: str = re.sub(r'^\d+[\s.\-]+', '', name).strip()
-    cleaned_title: str = clean_name(title)
-    return cleaned_title
+    """Limpia el nombre eliminando los prefijos numéricos iniciales."""
+    title = re.sub(r'^(?:\d+[\s.\-]+)+', '', path_dir.name).strip()
+    return clean_name(title)

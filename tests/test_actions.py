@@ -39,7 +39,7 @@ def test_resolve_name_path_file_no_collision(mocker: MockerFixture) -> None:
     mocker.patch.object(Path, "exists", return_value=False)
 
     result = resolve_name_path(path)
-    assert result == Path("/tmp/documento-importante.txt")
+    assert result == Path("/tmp/documento-importante!.txt")
 
 def test_resolve_name_path_directory(mocker: MockerFixture) -> None:
     path = Path("/tmp/01. Mi Carpeta")
