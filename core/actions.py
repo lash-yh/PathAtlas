@@ -120,7 +120,10 @@ def rename_files_and_directories(list_items: Iterable[Path], is_dry_run: bool) -
             if not _confirm_name_loss(item, new_path, is_dry_run):
                 continue
             if is_dry_run:
-                logging.info("[DRY RUN] Would rename: %s -> %s", item, new_path)
+                logging.info(
+                    "[DRY RUN] Would rename: %s -> %s", item, new_path,
+                    extra={"rename_source": item, "rename_target": new_path},
+                )
                 continue
             # Un destino puede aparecer después de validar el plan.
             # No recalcularlo: la ejecución debe respetar la vista previa.
@@ -132,7 +135,10 @@ def rename_files_and_directories(list_items: Iterable[Path], is_dry_run: bool) -
                 logging.error("Source is now a symbolic link — skipping %s", item)
                 continue
             item.rename(new_path)
-            logging.info("[RENAME] %s -> %s", item, new_path)
+            logging.info(
+                "[RENAME] %s -> %s", item, new_path,
+                extra={"rename_source": item, "rename_target": new_path},
+            )
         except PermissionError:
             logging.error("Permission denied — could not rename: %s -> %s", item, new_path)
         except OSError as error:

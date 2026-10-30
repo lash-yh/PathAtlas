@@ -10,6 +10,35 @@ from core.mounts import find_ssd_mount_point
 from core.traversal import get_name_directories, get_name_files
 
 
+class _RenameLogFormatter(logging.Formatter):
+    def __init__(self) -> None:
+        super().__init__("%(levelname)s: %(message)s")
+        self._last_directory: Path | None = None
+
+    def format(self, record: logging.LogRecord) -> str:
+        source = getattr(record, "rename_source", None)
+        target = getattr(record, "rename_target", None)
+        if source is None or target is None:
+            self._last_directory = None
+            return super().format(record)
+
+        rename = f"{source.name} -> {target.name}"
+        if source.parent == self._last_directory:
+            return rename
+        self._last_directory = source.parent
+        return f"{source.parent}\n{rename}"
+
+
+def _configure_logging() -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(_RenameLogFormatter())
+    handler.addFilter(
+        lambda record: record.levelno >= logging.WARNING
+        or hasattr(record, "rename_source")
+    )
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
+
+
 def _directory_path(value: str) -> Path:
     try:
         path = Path(value).expanduser().resolve()
@@ -33,10 +62,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s  %(levelname)-8s  %(message)s",
-                        datefmt="%H:%M:%S"
-                        )
+    _configure_logging()
 
     parser = _build_parser()
     args = parser.parse_args()

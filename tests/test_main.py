@@ -1,9 +1,46 @@
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 from pytest_mock import MockerFixture
 
 from main import main
+
+
+@pytest.mark.parametrize("run", [False, True])
+def test_cli_groups_file_and_directory_renames(
+    tmp_path: Path, run: bool,
+) -> None:
+    (tmp_path / "config.json").write_text('{"ignore": []}')
+    root = tmp_path / "selected"
+    child = root / "Mi Carpeta"
+    child.mkdir(parents=True)
+    (child / "A.TXT").write_text("first")
+    (child / "B.TXT").write_text("second")
+    (child / "a.txt").write_text("existing")
+    (root / "C.TXT").write_text("third")
+    script = Path(__file__).resolve().parents[1] / "main.py"
+
+    result = subprocess.run(
+        [sys.executable, str(script), "path", str(root)] + (["--run"] if run else []),
+        cwd=tmp_path, capture_output=True, text=True, check=True,
+    )
+
+    assert result.stdout == ""
+    assert result.stderr == (
+        f"{child}\n"
+        "A.TXT -> a(1).txt\n"
+        "B.TXT -> b.txt\n"
+        f"{root}\n"
+        "C.TXT -> c.txt\n"
+        "Mi Carpeta -> mi-carpeta\n"
+    )
+    if run:
+        assert (root / "mi-carpeta" / "a(1).txt").read_text() == "first"
+        assert (root / "mi-carpeta" / "a.txt").read_text() == "existing"
+    else:
+        assert (child / "A.TXT").read_text() == "first"
 
 
 @pytest.mark.parametrize('run_position', [None, 'before', 'after'])
