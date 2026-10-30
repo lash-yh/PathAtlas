@@ -86,13 +86,42 @@ def build_rename_plan(list_items: Iterable[Path]) -> list[tuple[Path, Path]]:
     return plan
 
 
+def _confirm_name_loss(item: Path, new_path: Path, is_dry_run: bool) -> bool:
+    """Advierte de la reducción de longitud sin contar sufijos de colisión."""
+    cleaned_name = clean_directory_name(item) if item.is_dir() else clean_file_name(item)
+    lost_characters = len(item.name) - len(cleaned_name)
+    if lost_characters <= 4:
+        return True
+
+    logging.warning(
+        "Pérdida de caracteres en %s: original=%r (%d caracteres), "
+        "nuevo=%r; nombre limpio=%r (%d caracteres). "
+        "Pérdida: %d caracteres (%.1f%%), antes de sufijos de colisión.",
+        item, item.name, len(item.name), new_path.name, cleaned_name,
+        len(cleaned_name), lost_characters, lost_characters / len(item.name) * 100,
+    )
+    if is_dry_run:
+        return True
+    try:
+        answer = input("¿Confirmar este renombrado? [s/N]: ").strip().casefold()
+    except (EOFError, OSError):
+        logging.warning("Sin respuesta disponible — se omite %s", item)
+        return False
+    if answer in {"s", "si", "sí", "y", "yes"}:
+        return True
+    logging.info("Renombrado rechazado — se omite %s", item)
+    return False
+
+
 def rename_files_and_directories(list_items: Iterable[Path], is_dry_run: bool) -> None:
     plan = build_rename_plan(list_items)
     for item, new_path in plan:
-        if is_dry_run:
-            logging.info("[DRY RUN] Would rename: %s -> %s", item, new_path)
-            continue
         try:
+            if not _confirm_name_loss(item, new_path, is_dry_run):
+                continue
+            if is_dry_run:
+                logging.info("[DRY RUN] Would rename: %s -> %s", item, new_path)
+                continue
             # Un destino puede aparecer después de validar el plan.
             # No recalcularlo: la ejecución debe respetar la vista previa.
             if new_path.is_symlink() or new_path.exists():
