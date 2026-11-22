@@ -14,6 +14,8 @@ def get_name_files(source_path: Path, ignore_list: Collection[str] = ()) -> Iter
     """Selecciona archivos usando exclusiones ya cargadas por el llamador."""
     try:
         for item in source_path.iterdir():
+            if str(item.name).startswith("."):
+                continue
             if item.is_symlink():
                 continue
 
@@ -34,6 +36,8 @@ def get_name_directories(source_path: Path, ignore_list: Collection[str] = ()) -
     """Selecciona directorios sin consultar la configuración en disco."""
     try:
         for item in source_path.iterdir():
+            if str(item.name).startswith("."):
+                continue
             if item.is_symlink():
                 continue
 

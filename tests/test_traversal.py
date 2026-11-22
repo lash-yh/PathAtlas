@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 from pytest_mock import MockerFixture
 
 from core.traversal import (
@@ -8,6 +9,52 @@ from core.traversal import (
     get_name_directories,
     get_name_files,
 )
+
+
+@pytest.mark.parametrize("relative_parent", [".", "contenedor"])
+def test_get_name_files_skips_hidden_entries(
+    tmp_path: Path, relative_parent: str
+) -> None:
+    parent = tmp_path / relative_parent
+    parent.mkdir(exist_ok=True)
+    (parent / ".Archivo Oculto.TXT").touch()
+    (parent / ".env").touch()
+    hidden_directory = parent / ".Carpeta Oculta"
+    hidden_directory.mkdir()
+    (hidden_directory / "Archivo Interior.TXT").touch()
+    visible_file = parent / "Archivo Visible.TXT"
+    visible_file.touch()
+    visible_directory = parent / "carpeta-visible"
+    visible_directory.mkdir()
+    (visible_directory / ".Otro Archivo Oculto.TXT").touch()
+    nested_file = visible_directory / "Archivo Anidado.TXT"
+    nested_file.touch()
+
+    assert set(get_name_files(tmp_path)) == {visible_file, nested_file}
+
+
+@pytest.mark.parametrize("relative_parent", [".", "contenedor"])
+def test_get_name_directories_skips_hidden_subtrees(
+    tmp_path: Path, relative_parent: str
+) -> None:
+    parent = tmp_path / relative_parent
+    parent.mkdir(exist_ok=True)
+    hidden_directory = parent / ".Carpeta Oculta"
+    hidden_directory.mkdir()
+    (hidden_directory / "Subcarpeta Visible").mkdir()
+    (parent / ".Archivo Oculto.TXT").touch()
+    visible_directory = parent / "Carpeta Visible"
+    visible_directory.mkdir()
+    nested_hidden_directory = visible_directory / ".Otra Carpeta Oculta"
+    nested_hidden_directory.mkdir()
+    (nested_hidden_directory / "Otra Subcarpeta Visible").mkdir()
+    nested_directory = visible_directory / "Subcarpeta Visible"
+    nested_directory.mkdir()
+
+    assert set(get_name_directories(tmp_path)) == {
+        visible_directory,
+        nested_directory,
+    }
 
 
 def test_get_name_files(mocker: MockerFixture) -> None:
