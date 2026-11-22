@@ -234,3 +234,29 @@ def test_traversal_uses_loaded_exclusions_without_file_reads(tmp_path: Path, moc
     assert list(get_name_directories(selected, config["ignore"])) == []
     assert build_directory_tree(selected, config["ignore"]) == {"Mi Archivo.TXT": None}
     opened.assert_not_called()
+
+
+def test_total_selection_includes_clean_names_and_preserves_exclusions(tmp_path: Path) -> None:
+    clean_directory = tmp_path / "carpeta-limpia"
+    clean_directory.mkdir()
+    dirty_directory = clean_directory / "Mi Carpeta"
+    dirty_directory.mkdir()
+    clean_file = dirty_directory / "limpio.txt"
+    clean_file.touch()
+    dirty_file = tmp_path / "Mi Archivo.TXT"
+    dirty_file.touch()
+    (tmp_path / ".Oculto.TXT").touch()
+    for name in (".Carpeta Oculta", "Ignorada"):
+        excluded = tmp_path / name
+        excluded.mkdir()
+        (excluded / "Archivo Excluido.TXT").touch()
+        (excluded / "Subcarpeta Excluida").mkdir()
+
+    assert set(get_name_files(tmp_path, {"Ignorada"}, only_pending=False)) == {
+        clean_file, dirty_file,
+    }
+    assert set(get_name_directories(tmp_path, {"Ignorada"}, only_pending=False)) == {
+        clean_directory, dirty_directory,
+    }
+    assert list(get_name_files(tmp_path, {"Ignorada"})) == [dirty_file]
+    assert list(get_name_directories(tmp_path, {"Ignorada"})) == [dirty_directory]

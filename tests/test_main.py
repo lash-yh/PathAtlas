@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 import subprocess
 import sys
 
@@ -29,12 +30,18 @@ def test_cli_groups_file_and_directory_renames(
 
     assert result.stdout == ""
     assert result.stderr == (
+        "INFO: Antes de la normalización: 4 archivos y 1 directorios\n"
+        "INFO: Recorrido inicial: 3 archivos y 1 directorios pendientes de renombrar\n"
         f"{child}\n"
         "A.TXT -> a(1).txt\n"
         "B.TXT -> b.txt\n"
         f"{root}\n"
         "C.TXT -> c.txt\n"
         "Mi Carpeta -> mi-carpeta\n"
+        "INFO: Después de la normalización: 4 archivos y 1 directorios\n"
+        "INFO: Verificación de conteos: coinciden los totales de archivos y directorios\n"
+        f"INFO: Recorrido final: {0 if run else 3} archivos y "
+        f"{0 if run else 1} directorios pendientes de renombrar\n"
     )
     if run:
         assert (root / "mi-carpeta" / "a(1).txt").read_text() == "first"
@@ -202,3 +209,49 @@ def test_default_command_reports_missing_mount_label(
         main()
     assert error.value.code == 2
     mount.assert_not_called()
+
+
+@pytest.mark.parametrize("removed_kind", ["file", "directory"])
+def test_main_warns_when_total_counts_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture, removed_kind: str,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.json").write_text('{"ignore": []}')
+    root = tmp_path / "selected"
+    root.mkdir()
+    file = root / "Mi Archivo.TXT"
+    file.touch()
+    directory = root / "Mi Carpeta"
+    directory.mkdir()
+    mocker.patch("sys.argv", ["main.py", "path", str(root), "--run"])
+
+    def simulate_missing_entry(items: list[Path], dry_run: bool) -> None:
+        assert not dry_run
+        assert set(items) == {file, directory}
+        if removed_kind == "file":
+            file.unlink()
+        else:
+            directory.rmdir()
+
+    mocker.patch("main.rename_files_and_directories", side_effect=simulate_missing_entry)
+
+    with caplog.at_level(logging.INFO):
+        main()
+
+    after_files = 0 if removed_kind == "file" else 1
+    after_directories = 0 if removed_kind == "directory" else 1
+    assert "Antes de la normalización: 1 archivos y 1 directorios" in caplog.text
+    assert (
+        f"Después de la normalización: {after_files} archivos y "
+        f"{after_directories} directorios"
+    ) in caplog.text
+    assert any(
+        record.levelno == logging.WARNING
+        and record.getMessage() == (
+            "Verificación de conteos: los totales han cambiado "
+            f"(archivos: 1 -> {after_files}; directorios: 1 -> {after_directories})"
+        )
+        for record in caplog.records
+    )
+    assert "coinciden los totales" not in caplog.text

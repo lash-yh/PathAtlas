@@ -10,8 +10,10 @@ from utils.text_utils import clean_directory_name, clean_file_name
 type DirectoryTree = dict[str, DirectoryTree | None]
 
 
-def get_name_files(source_path: Path, ignore_list: Collection[str] = ()) -> Iterator[Path]:
-    """Selecciona archivos usando exclusiones ya cargadas por el llamador."""
+def get_name_files(
+    source_path: Path, ignore_list: Collection[str] = (), *, only_pending: bool = True,
+) -> Iterator[Path]:
+    """Selecciona archivos; only_pending=False incluye los ya normalizados."""
     try:
         for item in source_path.iterdir():
             if str(item.name).startswith("."):
@@ -23,17 +25,19 @@ def get_name_files(source_path: Path, ignore_list: Collection[str] = ()) -> Iter
                 if item.name in ignore_list:
                     continue
 
-                yield from get_name_files(item, ignore_list)
+                yield from get_name_files(item, ignore_list, only_pending=only_pending)
 
             elif item.is_file():
-                if clean_file_name(item) != item.name:
+                if not only_pending or clean_file_name(item) != item.name:
                     yield item
     except PermissionError:
         logging.error("Permission denied — cannot read directory contents: %s", source_path)
 
 
-def get_name_directories(source_path: Path, ignore_list: Collection[str] = ()) -> Iterator[Path]:
-    """Selecciona directorios sin consultar la configuración en disco."""
+def get_name_directories(
+    source_path: Path, ignore_list: Collection[str] = (), *, only_pending: bool = True,
+) -> Iterator[Path]:
+    """Selecciona directorios; only_pending=False incluye los ya normalizados."""
     try:
         for item in source_path.iterdir():
             if str(item.name).startswith("."):
@@ -45,10 +49,10 @@ def get_name_directories(source_path: Path, ignore_list: Collection[str] = ()) -
                 if item.name in ignore_list:
                     continue
 
-                if clean_directory_name(item) != item.name:
+                if not only_pending or clean_directory_name(item) != item.name:
                     yield item
 
-                yield from get_name_directories(item, ignore_list)
+                yield from get_name_directories(item, ignore_list, only_pending=only_pending)
     except PermissionError:
         logging.error("Permission denied — cannot read directory contents: %s", source_path)
 

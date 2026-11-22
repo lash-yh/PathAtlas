@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse
 import logging
+from collections.abc import Collection
 from core.actions import (
     organize_for_depth_and_alphabetical,
     rename_files_and_directories,
@@ -35,6 +36,7 @@ def _configure_logging() -> None:
     handler.addFilter(
         lambda record: record.levelno >= logging.WARNING
         or hasattr(record, "rename_source")
+        or getattr(record, "scan_summary", False)
     )
     logging.basicConfig(level=logging.INFO, handlers=[handler])
 
@@ -59,6 +61,14 @@ def _build_parser() -> argparse.ArgumentParser:
         '--run', action='store_true', default=argparse.SUPPRESS, help='Apply renames'
     )
     return parser
+
+
+def _count_entries(source_path: Path, ignore_list: Collection[str]) -> tuple[int, int]:
+    files = sum(1 for _ in get_name_files(source_path, ignore_list, only_pending=False))
+    directories = sum(
+        1 for _ in get_name_directories(source_path, ignore_list, only_pending=False)
+    )
+    return files, directories
 
 
 def main() -> None:
@@ -89,13 +99,49 @@ def main() -> None:
             logging.error("Drive with label '%s' not found in disk partitions", mount_label)
             return
 
+    before_files, before_directories = _count_entries(source_path, ignore_list)
+    logging.info(
+        "Antes de la normalización: %d archivos y %d directorios",
+        before_files, before_directories, extra={"scan_summary": True},
+    )
+
     files = organize_for_depth_and_alphabetical(
         get_name_files(source_path, ignore_list))
 
     directories = organize_for_depth_and_alphabetical(
         get_name_directories(source_path, ignore_list))
 
+    logging.info(
+        "Recorrido inicial: %d archivos y %d directorios pendientes de renombrar",
+        len(files), len(directories), extra={"scan_summary": True},
+    )
+
     rename_files_and_directories([*files, *directories], dry_run)
+
+    after_files, after_directories = _count_entries(source_path, ignore_list)
+    logging.info(
+        "Después de la normalización: %d archivos y %d directorios",
+        after_files, after_directories, extra={"scan_summary": True},
+    )
+    if (before_files, before_directories) == (after_files, after_directories):
+        logging.info(
+            "Verificación de conteos: coinciden los totales de archivos y directorios",
+            extra={"scan_summary": True},
+        )
+    else:
+        logging.warning(
+            "Verificación de conteos: los totales han cambiado "
+            "(archivos: %d -> %d; directorios: %d -> %d)",
+            before_files, after_files, before_directories, after_directories,
+            extra={"scan_summary": True},
+        )
+
+    remaining_files = sum(1 for _ in get_name_files(source_path, ignore_list))
+    remaining_directories = sum(1 for _ in get_name_directories(source_path, ignore_list))
+    logging.info(
+        "Recorrido final: %d archivos y %d directorios pendientes de renombrar",
+        remaining_files, remaining_directories, extra={"scan_summary": True},
+    )
 
 if __name__ == "__main__":
     main()

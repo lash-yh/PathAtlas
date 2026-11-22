@@ -110,6 +110,19 @@ Comprueba la ruta seleccionada y las exclusiones antes de aplicar cambios.
 La ejecución vuelve a escanear y calcular los destinos; la vista previa no
 guarda un plan en disco. No se modifica el contenido de los archivos.
 
+Se muestra la cantidad de archivos y directorios pendientes de renombrar al
+inicio y se repiten los recorridos al finalizar para mostrar cuántos quedan.
+Estos conteos respetan las exclusiones y omiten los nombres ya normalizados.
+En la vista previa, el conteo final refleja los nombres sin modificar.
+
+También se muestran los totales de archivos y directorios antes y después
+de la normalización, incluidos los nombres ya normalizados. Se cuentan las
+entradas visibles dentro del ámbito del recorrido: se omiten directorios
+ignorados y su contenido, entradas ocultas y enlaces simbólicos, y no se
+cuenta el directorio raíz. Se indica si ambos totales coinciden y se emite
+una advertencia si cambian. Esta comparación verifica cantidades; no
+comprueba el contenido de los documentos.
+
 Para consultar las opciones de la CLI:
 
 ```bash
