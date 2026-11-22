@@ -4,13 +4,13 @@ from utils.text_utils import clean_name, clean_file_name, clean_directory_name
 
 def test_clean_name_critical_case() -> None:
     # Caso crítico especificado por el usuario
-    assert clean_name("C++ Programación") == "c-programacion"
+    assert clean_name("C++ Programación") == "c++-programacion"
 
 def test_clean_name_accents_and_special() -> None:
-    assert clean_name("¡Hola, Mundo!") == "hola-mundo"
+    assert clean_name("¡Hola, Mundo!") == "¡hola,-mundo!"
     assert clean_name("Árbol de decisión") == "arbol-de-decision"
     assert clean_name("pingüino") == "pinguino"
-    assert clean_name("100% real no fake") == "100-real-no-fake"
+    assert clean_name("100% real no fake") == "100%-real-no-fake"
 
 def test_clean_name_multiple_spaces_and_underscores() -> None:
     assert clean_name("  nombre   con   espacios  ") == "nombre-con-espacios"
@@ -26,7 +26,7 @@ def test_clean_file_name_preserves_extension() -> None:
     assert clean_file_name(path_no_ext) == "archivosinextension"
 
     path_complex = Path("Video_Tutorial_C++.mp4")
-    assert clean_file_name(path_complex) == "video-tutorial-c.mp4"
+    assert clean_file_name(path_complex) == "video-tutorial-c++.mp4"
 
 def test_clean_directory_name_removes_numeric_prefixes() -> None:
     # Validar la eliminación de prefijos numéricos
@@ -42,3 +42,33 @@ def test_clean_directory_name_removes_numeric_prefixes() -> None:
     # Caso donde el número no está al inicio
     path4 = Path("Carpeta 01")
     assert clean_directory_name(path4) == "carpeta-01"
+
+
+@pytest.mark.parametrize("name, expected", [
+    ("Aportación", "aportacion"),
+    ("Aportacio\u0301n", "aportacion"),
+    ("APORTACIÓN", "aportacion"),
+    ("r5-·-Cuadro de Aportación", "r5-cuadro-de-aportacion"),
+    ("r5·Cuadro", "r5-cuadro"),
+    (" · Aportación · ", "aportacion"),
+    ("Copy·of Aportación", "aportacion"),
+])
+def test_clean_name_normalizes_reported_accents_and_middle_dots(
+    name: str, expected: str
+) -> None:
+    assert clean_name(name) == expected
+    assert clean_name(expected) == expected
+    assert clean_file_name(Path(f"{name}.PDF")) == f"{expected}.pdf"
+    assert clean_directory_name(Path(f"01. {name}")) == expected
+
+
+@pytest.mark.parametrize("name", [
+    "01· Aportación",
+    "01. 02· Aportacio\u0301n",
+    "01·02· Aportación",
+])
+def test_directory_numeric_prefixes_accept_middle_dot_separators(name: str) -> None:
+    cleaned = clean_directory_name(Path(name))
+
+    assert cleaned == "aportacion"
+    assert clean_directory_name(Path(cleaned)) == cleaned

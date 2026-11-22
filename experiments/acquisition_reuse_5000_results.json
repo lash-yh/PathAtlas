@@ -1,0 +1,139 @@
+{
+  "python": "3.13.12",
+  "platform": "Linux-7.2.10-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "files": 5000,
+  "repeats": 5,
+  "all_outputs_identical": true,
+  "operation_counts": {
+    "preview": {
+      "actual": {
+        "iterdir": 106,
+        "is_symlink": 22771,
+        "is_dir": 20218,
+        "is_file": 10005,
+        "clean_file_name": 15006,
+        "clean_directory_name": 155,
+        "exists": 7603
+      },
+      "reutilizar_dos_recorridos": {
+        "iterdir": 106,
+        "is_symlink": 22771,
+        "is_dir": 20218,
+        "is_file": 10005,
+        "clean_file_name": 5003,
+        "clean_directory_name": 52,
+        "exists": 7603
+      },
+      "reutilizar_un_recorrido": {
+        "iterdir": 53,
+        "is_symlink": 17714,
+        "is_dir": 15162,
+        "clean_directory_name": 52,
+        "is_file": 10005,
+        "clean_file_name": 5003,
+        "exists": 7603
+      }
+    },
+    "rename": {
+      "actual": {
+        "iterdir": 106,
+        "is_symlink": 32875,
+        "is_dir": 20218,
+        "is_file": 10005,
+        "clean_file_name": 15006,
+        "clean_directory_name": 155,
+        "exists": 12655
+      },
+      "reutilizar_dos_recorridos": {
+        "iterdir": 106,
+        "is_symlink": 32875,
+        "is_dir": 20218,
+        "is_file": 10005,
+        "clean_file_name": 5003,
+        "clean_directory_name": 52,
+        "exists": 12655
+      },
+      "reutilizar_un_recorrido": {
+        "iterdir": 53,
+        "is_symlink": 27818,
+        "is_dir": 15162,
+        "clean_directory_name": 52,
+        "is_file": 10005,
+        "clean_file_name": 5003,
+        "exists": 12655
+      }
+    }
+  },
+  "timings": {
+    "preview": {
+      "actual": {
+        "median_seconds": 0.3256278499993641,
+        "samples_seconds": [
+          0.3235989120003069,
+          0.3262057710016961,
+          0.3256278499993641,
+          0.32508047700139286,
+          0.3257793960001436
+        ],
+        "relative_to_current": 1.0
+      },
+      "reutilizar_dos_recorridos": {
+        "median_seconds": 0.2759980099999666,
+        "samples_seconds": [
+          0.28121855899917136,
+          0.2759980099999666,
+          0.2629474589994061,
+          0.2640568020015053,
+          0.27787252600137435
+        ],
+        "relative_to_current": 0.8475872380096038
+      },
+      "reutilizar_un_recorrido": {
+        "median_seconds": 0.24923805500111484,
+        "samples_seconds": [
+          0.2382127050004783,
+          0.239858250000907,
+          0.24923805500111484,
+          0.25027948999922955,
+          0.2568617279994214
+        ],
+        "relative_to_current": 0.7654076732122316
+      }
+    },
+    "rename": {
+      "actual": {
+        "median_seconds": 0.3850514669993572,
+        "samples_seconds": [
+          0.36567453099996783,
+          0.40089716100010264,
+          0.3831379460007156,
+          0.3850514669993572,
+          0.40123401600067155
+        ],
+        "relative_to_current": 1.0
+      },
+      "reutilizar_dos_recorridos": {
+        "median_seconds": 0.34490486700087786,
+        "samples_seconds": [
+          0.35983345200111216,
+          0.3458359840005869,
+          0.32587005700042937,
+          0.3331964690005407,
+          0.34490486700087786
+        ],
+        "relative_to_current": 0.8957370548115678
+      },
+      "reutilizar_un_recorrido": {
+        "median_seconds": 0.3081924969992542,
+        "samples_seconds": [
+          0.33322785800010024,
+          0.3149419500005024,
+          0.30221709400029795,
+          0.3081924969992542,
+          0.3066655359998549
+        ],
+        "relative_to_current": 0.8003929952557971
+      }
+    }
+  }
+}

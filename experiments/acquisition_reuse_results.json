@@ -1,0 +1,151 @@
+{
+  "python": "3.13.12",
+  "platform": "Linux-7.2.10-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "files": 1000,
+  "repeats": 7,
+  "all_outputs_identical": true,
+  "operation_counts": {
+    "preview": {
+      "actual": {
+        "iterdir": 26,
+        "is_symlink": 4571,
+        "is_dir": 4058,
+        "is_file": 2005,
+        "clean_file_name": 3006,
+        "clean_directory_name": 35,
+        "exists": 1523
+      },
+      "reutilizar_dos_recorridos": {
+        "iterdir": 26,
+        "is_symlink": 4571,
+        "is_dir": 4058,
+        "is_file": 2005,
+        "clean_file_name": 1003,
+        "clean_directory_name": 12,
+        "exists": 1523
+      },
+      "reutilizar_un_recorrido": {
+        "iterdir": 13,
+        "is_symlink": 3554,
+        "is_dir": 3042,
+        "clean_directory_name": 12,
+        "is_file": 2005,
+        "clean_file_name": 1003,
+        "exists": 1523
+      }
+    },
+    "rename": {
+      "actual": {
+        "iterdir": 26,
+        "is_symlink": 6595,
+        "is_dir": 4058,
+        "is_file": 2005,
+        "clean_file_name": 3006,
+        "clean_directory_name": 35,
+        "exists": 2535
+      },
+      "reutilizar_dos_recorridos": {
+        "iterdir": 26,
+        "is_symlink": 6595,
+        "is_dir": 4058,
+        "is_file": 2005,
+        "clean_file_name": 1003,
+        "clean_directory_name": 12,
+        "exists": 2535
+      },
+      "reutilizar_un_recorrido": {
+        "iterdir": 13,
+        "is_symlink": 5578,
+        "is_dir": 3042,
+        "clean_directory_name": 12,
+        "is_file": 2005,
+        "clean_file_name": 1003,
+        "exists": 2535
+      }
+    }
+  },
+  "timings": {
+    "preview": {
+      "actual": {
+        "median_seconds": 0.06186442199941666,
+        "samples_seconds": [
+          0.06186442199941666,
+          0.06210808099967835,
+          0.06786417100011022,
+          0.05908746299974155,
+          0.0622262340002635,
+          0.05923902799986536,
+          0.05828056999962428
+        ],
+        "relative_to_current": 1.0
+      },
+      "reutilizar_dos_recorridos": {
+        "median_seconds": 0.05375230800018471,
+        "samples_seconds": [
+          0.05375230800018471,
+          0.05489511299856531,
+          0.05508988099973067,
+          0.04953700499936531,
+          0.050390956001137965,
+          0.05419359000006807,
+          0.04828449200067553
+        ],
+        "relative_to_current": 0.8688727100803036
+      },
+      "reutilizar_un_recorrido": {
+        "median_seconds": 0.048161028998947586,
+        "samples_seconds": [
+          0.04929520000041521,
+          0.05025432799993723,
+          0.046433700999841676,
+          0.04903519799881906,
+          0.048161028998947586,
+          0.04746453600091627,
+          0.04340185100045346
+        ],
+        "relative_to_current": 0.7784931539391367
+      }
+    },
+    "rename": {
+      "actual": {
+        "median_seconds": 0.07541319200026919,
+        "samples_seconds": [
+          0.07185503900109325,
+          0.07981119000032777,
+          0.07433405700066942,
+          0.07565528899976925,
+          0.07616499100004148,
+          0.0727840819999983,
+          0.07541319200026919
+        ],
+        "relative_to_current": 1.0
+      },
+      "reutilizar_dos_recorridos": {
+        "median_seconds": 0.06601267699988966,
+        "samples_seconds": [
+          0.06194228899948939,
+          0.06247372100006032,
+          0.06638816600025166,
+          0.06257131500024116,
+          0.06601267699988966,
+          0.06730461500046658,
+          0.06807860600019922
+        ],
+        "relative_to_current": 0.8753465441385113
+      },
+      "reutilizar_un_recorrido": {
+        "median_seconds": 0.058841157999268034,
+        "samples_seconds": [
+          0.056904304001363926,
+          0.05715831400084426,
+          0.06702719100030663,
+          0.05696011999862094,
+          0.058841157999268034,
+          0.05966789800004335,
+          0.0626385619998473
+        ],
+        "relative_to_current": 0.7802501981226043
+      }
+    }
+  }
+}

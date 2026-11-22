@@ -20,20 +20,18 @@ def test_scanner_structure_directories_not_dir(mocker: MockerFixture) -> None:
     with pytest.raises(FileNotFoundError, match="La ruta no existe o no es un directorio"):
         scanner_structure_directories(base_path)
 
-def test_scanner_structure_directories_success(mocker: MockerFixture, mock_config_json: None) -> None:
+def test_scanner_structure_directories_success(mocker: MockerFixture) -> None:
     base_path = MagicMock(spec=Path)
     base_path.exists.return_value = True
     base_path.is_dir.return_value = True
     base_path.name = "01. Mi Proyecto"
 
-    config_path = Path("/mock/config.json")
     structure_path = Path("/mock/structure.json")
 
-    mocker.patch("core.scanner.get_cached_config_value", return_value=[".git"])
     mock_build = mocker.patch("core.scanner.build_directory_tree", return_value={"src": {}})
     mock_save = mocker.patch("core.scanner.save_structure_directories")
 
-    scanner_structure_directories(base_path, config_path, structure_path)
+    scanner_structure_directories(base_path, [".git"], structure_path)
 
     # Se debió llamar a build_directory_tree con base_path y la lista ignore_dir
     mock_build.assert_called_once_with(base_path, [".git"])
@@ -53,11 +51,27 @@ def test_scanner_structure_directories_no_config(mocker: MockerFixture) -> None:
     mock_build = mocker.patch("core.scanner.build_directory_tree", return_value={"src": {}})
     mock_save = mocker.patch("core.scanner.save_structure_directories")
 
-    # Llama sin config_path
+    # Llama sin exclusiones ni destino de guardado
     scanner_structure_directories(base_path)
 
-    # Se debió llamar a build_directory_tree con base_path y lista vacía
-    mock_build.assert_called_once_with(base_path, [])
+    # Se debió llamar a build_directory_tree sin exclusiones
+    mock_build.assert_called_once_with(base_path, ())
 
     # No se debió llamar a guardar
     mock_save.assert_not_called()
+
+
+def test_scanner_saves_using_loaded_config_after_config_file_is_deleted(tmp_path: Path) -> None:
+    import json
+    from core.config_loader import load_config
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"ignore": ["Ignorada"]}')
+    selected = tmp_path / "Mi Proyecto"
+    selected.mkdir()
+    (selected / "file.txt").touch()
+    (selected / "Ignorada").mkdir()
+    config = load_config(config_path)
+    config_path.unlink()
+    snapshot = tmp_path / "snapshot.json"
+    scanner_structure_directories(selected, config["ignore"], snapshot)
+    assert json.loads(snapshot.read_text()) == {"mi-proyecto": {"file.txt": None}}

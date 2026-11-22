@@ -1,151 +1,145 @@
-from pathlib import Path
-import psutil
+"""Resolución de colisiones, orden y ejecución segura de renombrados."""
+
 import logging
+from collections.abc import Iterable
 from itertools import count
-from core.config_loader import get_cached_config_value
-from utils.text_utils import (clean_file_name,
-                            clean_directory_name)
+from pathlib import Path
 
-def _resolve_config(config_path: Path, key_config: str,
-                    config_value: list | None) -> list:
+from utils.text_utils import clean_directory_name, clean_file_name
 
-    if config_value is not None:
-        return config_value
-    if config_path:
-        return get_cached_config_value(config_path, key_config) or []
-    return []
 
-def _unique_path(base_path: Path)-> Path | None:
-    """Genera una ruta única añadiendo un sufijo numérico para evitar colisiones.
-
-    Args:
-        base_path (Path): La ruta deseada original.
-
-    Returns:
-        Path | None: La ruta única si se encuentra, o None si no hay colisión (es decir, el path base ya era válido).
-    """
-    if not base_path.exists():
+def _unique_path(
+    base_path: Path, reserved_paths: set[Path] | None = None,
+    is_directory: bool = False,
+) -> Path:
+    """Busca un destino libre en disco y en el plan, respetando enlaces rotos."""
+    reserved = reserved_paths if reserved_paths is not None else set()
+    if base_path not in reserved and not (base_path.is_symlink() or base_path.exists()):
         return base_path
-    stem, suffix = base_path.stem, base_path.suffix
+    stem = base_path.name if is_directory else base_path.stem
+    suffix = "" if is_directory else base_path.suffix
     for n in count(1):
         candidate = base_path.parent / f"{stem}({n}){suffix}"
-        if not candidate.exists():
+        if candidate not in reserved and not (candidate.is_symlink() or candidate.exists()):
             return candidate
-    return None
+    raise RuntimeError("Could not find a unique path")
 
 
-def find_ssd_mount_point(label_ssd: str = None)-> Path | None:
-    if not label_ssd:
-        raise ValueError("label_ssd is empty")
+def resolve_name_path(
+    base_path: Path, reserved_paths: set[Path] | None = None,
+) -> Path | None:
+    """Limpia el nombre y resuelve colisiones con disco y destinos reservados.
 
-    for part in psutil.disk_partitions():
-        mount_point = part.mountpoint.rstrip('/')
-        if mount_point.endswith(label_ssd):
-            logging.info("SSD found — device: %s | mount point: %s | filesystem: %s",
-                         part.device, part.mountpoint, part.fstype)
-            return Path(part.mountpoint)
-    return None
-
-
-def resolve_name_path(base_path: Path) -> Path | None:
-    """Resuelve y limpia el nombre para un archivo o directorio.
-
-    Detecta si la ruta proporcionada (`base_path`) corresponde a un directorio o a un
-    archivo. Dependiendo del tipo, aplica la limpieza correspondiente (`clean_directory_name`
-    o `clean_file_name`). Posteriormente, maneja la resolución de colisiones: si el nuevo
-    nombre limpio ya existe en el directorio destino, delega en la función `_unique_path`
-    para adjuntar un sufijo numérico incremental (por ejemplo, `archivo(1).txt`) garantizando
-    que la ruta final sea única.
-
-    Args:
-        base_path (Path): La ruta original a resolver y renombrar.
-
-    Returns:
-        Path | None: La ruta resuelta con el nombre limpio y único, o None si hay error.
-
-    Raises:
-        ValueError: Si el nombre resultante después de la limpieza está vacío.
+    Omite enlaces simbólicos como origen. Un nombre vacío o inválido genera
+    ValueError para que el plan lo registre y continúe con el resto del lote.
     """
+    if base_path.is_symlink():
+        return None
+
     new_name = ""
 
-    if base_path.is_dir():
-        new_name = clean_directory_name(base_path)
+    is_directory = base_path.is_dir()
+    if is_directory:
+        new_name: str = clean_directory_name(base_path)
     elif base_path.is_file():
-        new_name = clean_file_name(base_path)
+        new_name: str = clean_file_name(base_path)
 
-    if not new_name:
+    if not new_name or new_name in {".", ".."}:
         raise ValueError(f"new name is empty: {base_path}")
 
-    final_name = base_path.parent / new_name
+    final_name: Path = base_path.parent / new_name
 
     if  final_name.name == base_path.name:
         return final_name
 
-    if final_name.exists() and final_name.samefile(base_path):
+    if (
+        final_name not in (reserved_paths or set())
+        and not final_name.is_symlink()
+        and final_name.exists()
+        and final_name.samefile(base_path)
+    ):
         return final_name
 
-    return _unique_path(final_name)
+    return _unique_path(final_name, reserved_paths, is_directory)
 
 
-def organize_for_depth_and_alphabetical(list_items)-> list:
+def organize_for_depth_and_alphabetical(list_items: Iterable[Path]) -> list[Path]:
     return sorted(list(list_items), key=lambda part: (-len(part.parts), part))
 
 
-def get_name_files(source_path: Path, config_path: Path,
-                key: str, config_value: list = None):
-
-    ignore_dir = _resolve_config(config_path, key, config_value)
-
-    try:
-        for item in source_path.iterdir():
-
-            if item.is_dir():
-                if item.name in ignore_dir:
-                    continue
-
-                yield from get_name_files(item, config_path,
-                                    key, ignore_dir)
-
-            elif item.is_file():
-                yield item
-    except PermissionError:
-        logging.error("Permission denied — cannot read directory contents: %s", source_path)
-
-
-def get_name_directories(source_path: Path, config_path: Path,
-                        key: str, config_value: list = None):
-
-    ignore_dir = _resolve_config(config_path,
-                                key, config_value)
-    try:
-        for item in source_path.iterdir():
-
-            if item.is_dir():
-                if item.name in ignore_dir:
-                    continue
-
-                yield item
-
-                yield from get_name_directories(item, config_path,
-                                            key, ignore_dir)
-    except PermissionError:
-        logging.error("Permission denied — cannot read directory contents: %s", source_path)
-
-def rename_files_and_directories(list_items: list, is_dry_run: bool):
+def build_rename_plan(list_items: Iterable[Path]) -> list[tuple[Path, Path]]:
+    """Valida el lote antes de modificarlo y reserva los destinos válidos."""
+    plan: list[tuple[Path, Path]] = []
+    reserved_paths: set[Path] = set()
     for item in list_items:
         try:
-            new_path_file = resolve_name_path(item)
-            if new_path_file and new_path_file != item:
-                if is_dry_run:
-                    logging.info("[DRY RUN] Would rename: %s -> %s", item.name, new_path_file.name)
-                else:
-                    try:
-                        logging.info("[RENAME] %s -> %s", item.name, new_path_file.name)
-                        item.rename(new_path_file)
-                    except PermissionError:
-                        logging.error("Permission denied — could not rename: %s -> %s", item.name, new_path_file.name)
-
+            new_path = resolve_name_path(item, reserved_paths)
+            if new_path and new_path != item:
+                reserved_paths.add(new_path)
+                plan.append((item, new_path))
+        except ValueError as error:
+            logging.error("Invalid name — skipping %s: %s", item, error)
         except PermissionError:
             logging.error("Permission denied — cannot access item: %s", item)
-        except OSError as e:
-            logging.error("OS error while processing %s: %s", item, e)
+        except OSError as error:
+            logging.error("OS error while validating %s: %s", item, error)
+    return plan
+
+
+def _confirm_name_loss(item: Path, new_path: Path, is_dry_run: bool) -> bool:
+    """Advierte de la reducción de longitud sin contar sufijos de colisión."""
+    cleaned_name = clean_directory_name(item) if item.is_dir() else clean_file_name(item)
+    lost_characters = len(item.name) - len(cleaned_name)
+    if lost_characters <= 4:
+        return True
+
+    logging.warning(
+        "Pérdida de caracteres en %s: original=%r (%d caracteres), "
+        "nuevo=%r; nombre limpio=%r (%d caracteres). "
+        "Pérdida: %d caracteres (%.1f%%), antes de sufijos de colisión.",
+        item, item.name, len(item.name), new_path.name, cleaned_name,
+        len(cleaned_name), lost_characters, lost_characters / len(item.name) * 100,
+    )
+    if is_dry_run:
+        return True
+    try:
+        answer = input("¿Confirmar este renombrado? [s/N]: ").strip().casefold()
+    except (EOFError, OSError):
+        logging.warning("Sin respuesta disponible — se omite %s", item)
+        return False
+    if answer in {"s", "si", "sí", "y", "yes"}:
+        return True
+    logging.info("Renombrado rechazado — se omite %s", item)
+    return False
+
+
+def rename_files_and_directories(list_items: Iterable[Path], is_dry_run: bool) -> None:
+    plan = build_rename_plan(list_items)
+    for item, new_path in plan:
+        try:
+            if not _confirm_name_loss(item, new_path, is_dry_run):
+                continue
+            if is_dry_run:
+                logging.info(
+                    "[DRY RUN] Would rename: %s -> %s", item, new_path,
+                    extra={"rename_source": item, "rename_target": new_path},
+                )
+                continue
+            # Un destino puede aparecer después de validar el plan.
+            # No recalcularlo: la ejecución debe respetar la vista previa.
+            if new_path.is_symlink() or new_path.exists():
+                if new_path.is_symlink() or not new_path.samefile(item):
+                    logging.error("Destination is occupied — skipping %s -> %s", item, new_path)
+                    continue
+            if item.is_symlink():
+                logging.error("Source is now a symbolic link — skipping %s", item)
+                continue
+            item.rename(new_path)
+            logging.info(
+                "[RENAME] %s -> %s", item, new_path,
+                extra={"rename_source": item, "rename_target": new_path},
+            )
+        except PermissionError:
+            logging.error("Permission denied — could not rename: %s -> %s", item, new_path)
+        except OSError as error:
+            logging.error("OS error while renaming %s: %s", item, error)
