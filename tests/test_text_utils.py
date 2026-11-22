@@ -42,3 +42,33 @@ def test_clean_directory_name_removes_numeric_prefixes() -> None:
     # Caso donde el número no está al inicio
     path4 = Path("Carpeta 01")
     assert clean_directory_name(path4) == "carpeta-01"
+
+
+@pytest.mark.parametrize("name, expected", [
+    ("Aportación", "aportacion"),
+    ("Aportacio\u0301n", "aportacion"),
+    ("APORTACIÓN", "aportacion"),
+    ("r5-·-Cuadro de Aportación", "r5-cuadro-de-aportacion"),
+    ("r5·Cuadro", "r5-cuadro"),
+    (" · Aportación · ", "aportacion"),
+    ("Copy·of Aportación", "aportacion"),
+])
+def test_clean_name_normalizes_reported_accents_and_middle_dots(
+    name: str, expected: str
+) -> None:
+    assert clean_name(name) == expected
+    assert clean_name(expected) == expected
+    assert clean_file_name(Path(f"{name}.PDF")) == f"{expected}.pdf"
+    assert clean_directory_name(Path(f"01. {name}")) == expected
+
+
+@pytest.mark.parametrize("name", [
+    "01· Aportación",
+    "01. 02· Aportacio\u0301n",
+    "01·02· Aportación",
+])
+def test_directory_numeric_prefixes_accept_middle_dot_separators(name: str) -> None:
+    cleaned = clean_directory_name(Path(name))
+
+    assert cleaned == "aportacion"
+    assert clean_directory_name(Path(cleaned)) == cleaned

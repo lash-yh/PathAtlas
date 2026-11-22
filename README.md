@@ -178,13 +178,17 @@ paréntesis y puntos. En Linux también conserva `?` y `*`; en otros sistemas
 los sustituye por separadores. Los caracteres `<>:"/\\|` y los de control
 se sustituyen por separadores. Se mantienen las reglas de minúsculas,
 eliminación de tildes, espacios/guiones bajos a guiones y eliminación de
-prefijos numéricos en directorios. También se eliminan expresiones `Copy of`
-(incluidas las variantes con guiones o guiones bajos) y puntos finales.
+prefijos numéricos en directorios. El punto medio `·` se convierte en un
+separador y los separadores consecutivos se reducen a un solo guion.
+También se eliminan expresiones `Copy of` (incluidas las variantes con
+guiones, guiones bajos o puntos medios) y puntos finales.
 
 Ejemplos:
 
 - `Programación en C++ y C#.TXT` → `programacion-en-c++-y-c#.txt`.
 - `Copy of Informe.TXT` → `informe.txt`.
+- `Aportación.PDF` → `aportacion.pdf` (también con tilde descompuesta en Unicode).
+- `r5-·-Cuadro de Aportación.PDF` → `r5-cuadro-de-aportacion.pdf`.
 - Carpeta `01. Mis Documentos` → `mis-documentos`.
 - En Linux, `A!.TXT` → `a!.txt` y `A?.TXT` → `a?.txt`.
 - Un sufijo de colisión como `archivo(1).txt` se conserva en ejecuciones posteriores.

@@ -151,3 +151,39 @@ def test_newly_occupied_destination_is_skipped_without_overwrite(
 def test_question_mark_and_asterisk_are_filtered_outside_linux(mocker: MockerFixture) -> None:
     mocker.patch("utils.text_utils._INVALID_CHARACTERS", frozenset('<>:"/\\|?*'))
     assert clean_file_name(Path("C++? C#*.TXT")) == "c++-c#.txt"
+
+
+@pytest.mark.parametrize("name, normalized", [
+    ("Aportación.PDF", "aportacion.pdf"),
+    ("Aportacio\u0301n.PDF", "aportacion.pdf"),
+    ("r5-·-Cuadro de Aportación.PDF", "r5-cuadro-de-aportacion.pdf"),
+])
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_reported_names_have_normalized_destinations_with_collisions(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture,
+    name: str, normalized: str, dry_run: bool,
+) -> None:
+    source = tmp_path / name
+    source.write_text("original")
+    existing = tmp_path / normalized
+    existing.write_text("existente")
+    expected = existing.with_name(f"{existing.stem}(1){existing.suffix}")
+    candidates = list(get_name_files(tmp_path))
+
+    assert candidates == [source]
+    assert build_rename_plan(candidates) == [(source, expected)]
+    with caplog.at_level(logging.INFO):
+        rename_files_and_directories(candidates, dry_run)
+
+    assert existing.read_text() == "existente"
+    assert [
+        record.rename_target for record in caplog.records
+        if hasattr(record, "rename_target")
+    ] == [expected]
+    if dry_run:
+        assert source.read_text() == "original"
+        assert not expected.exists()
+    else:
+        assert expected.read_text() == "original"
+        assert not source.exists()
+        assert list(get_name_files(tmp_path)) == []

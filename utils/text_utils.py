@@ -14,6 +14,7 @@ def clean_name(name: str) -> str:
 
     Conserva símbolos como +, #, !, %, paréntesis y puntos. Los caracteres
     reservados <>:"/\\| y los de control se sustituyen por espacios.
+    El punto medio · se convierte en un separador, igual que los espacios.
     En Linux también se conservan ? y *; en otros sistemas se filtran.
     """
     normalized = udd.normalize('NFKD', name)
@@ -22,8 +23,8 @@ def clean_name(name: str) -> str:
         " " if c in _INVALID_CHARACTERS or udd.category(c).startswith('C') else c
         for c in without_accents
     )
-    cleaned = re.sub(r'copy[\s_-]+of[\s_-]*', '', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'[\s_-]+', '-', cleaned.lower()).strip('-')
+    cleaned = re.sub(r'copy[\s_·-]+of[\s_·-]*', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'[\s_·-]+', '-', cleaned.lower()).strip('-')
     return cleaned.rstrip('.')
 
 
@@ -37,5 +38,5 @@ def clean_file_name(path_file: Path) -> str:
 
 def clean_directory_name(path_dir: Path) -> str:
     """Limpia el nombre eliminando los prefijos numéricos iniciales."""
-    title = re.sub(r'^(?:\d+[\s.\-]+)+', '', path_dir.name).strip()
+    title = re.sub(r'^(?:\d+[\s.·-]+)+', '', path_dir.name).strip()
     return clean_name(title)
